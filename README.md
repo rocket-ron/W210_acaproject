@@ -1,9 +1,11 @@
-# HHS Challenge (Bayes Hack 2016) - Semantic Search Engine
+# Health and Human Services ACA Health Exchange - Semantic Search Engine
 
-- Team: Innocent Bayestanders
-- Members: Ron Cordell, Konniam Chan, Chris Dailey, Marjorie Sayer, Safyre Anderson
+- Team: TBD
+- Members: Ron Cordell, Konniam Chan, Lei Yang, Tigi Thomas
 - Mentors: Jimi Shanahan, David Portnoy
-- Date: April 28, 2016
+- Date: Summer 2016
+
+This project is a fork of the Bayes Hack 2016 HHS project. The intention is to advance the state of the project as the focus of a capstone for the UC Berkeley MIDS program. This project would not be possible if not for the foundational work of the original InnocentBaystanders team at the Bayes Hack 2016 event.
 
 ### Abstract
 We aimed to connect people with the health care plan that best serves their needs. Current recommenders such as `healthcare.gov` and StrideHealth are a skin on top of the complicated mess that is health plan data. Users are shown options that match their basic demographic and financial status. Their medical history is boiled down to a list of terms. Close to nothing is done to communicate the details of the plan in understandable layman's terms or why a plan is selected for that user. To go a step further, we’re building a faceted search engine that learns. Think Google + Amazon; PageRank + Facets. Powered by combined healthcare data, third party reviews from sources like Yelp and other sources, users are able to search more simply yet more completely than ever before.  As the search engine grows in popularity, so will the matching ability of the results. Each pause and click on the website is captured and fed to a Learn to Rank (LETOR) algorithm.  We are taking health care to a new level that brings the users closer to finding the healthcare they need.
