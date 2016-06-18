@@ -10,10 +10,10 @@ import os
 import hashlib
 
 # Download to a local file
-def download_file(url):
-  h = hashlib.md5(item['url']).hexdigest()
+def download_file(_url):
+  h = hashlib.md5(_url).hexdigest()
   local_file = h + '.tmp'
-  r = requests.get(url, stream=True)
+  r = requests.get(_url, stream=True)
   with open(local_file, 'wb') as f:
     for chunk in r.iter_content(chunk_size=1024*64):
       if chunk:
@@ -58,6 +58,7 @@ for fname in ['provider-urls.txt','plan-urls.txt','formulary-urls.txt']:
         _url['status'] = 'PROCESSED'
       except Exception as ex:
         _url['status'] = 'ERROR'
+        print ex
 
   with open(fname, 'w') as outfile:
     for _url in urls:
