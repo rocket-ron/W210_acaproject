@@ -36,10 +36,6 @@ def process_url(_url, bucket_name, prefix):
     # os.remove(f)
     return hashed_url
 
-s3 = boto3.resource('s3')
-bucket = s3.Bucket('w210')
-check_map = {}
-
 # reconstitute the dictionary from the file on disk
 def load_urls(urlfile):
     urls = []
@@ -48,6 +44,11 @@ def load_urls(urlfile):
             urls.append(json.loads(line.strip())
     return urls
 
+######################################################################
+#
+# MAIN SCRIPT STARTS HERE
+#
+######################################################################
 for fname in ['provider-urls.txt','plan-urls.txt','formulary-urls.txt']:
     urls = load_urls(fname)
     for _url in urls:
