@@ -57,7 +57,7 @@ for fname in ['provider-urls.txt','plan-urls.txt','formulary-urls.txt']:
         _url['s3key'] = process_url(_url['url'], 'w210', 'json/')
         _url['status'] = 'PROCESSED'
       except Exception as ex:
-        _url['status': 'ERROR']
+        _url['status'] = 'ERROR'
 
   with open(fname, 'w') as outfile:
     with item in urls:
