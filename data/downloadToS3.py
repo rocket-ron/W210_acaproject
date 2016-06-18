@@ -11,7 +11,7 @@ import hashlib
 
 # Download to a local file
 def download_file(url):
-  h = haslib.md5(item['url']).hexdigest()
+  h = hashlib.md5(item['url']).hexdigest()
   local_file = h + '.tmp'
   r = requests.get(url, stream=True)
   with open(local_file, 'wb') as f:
@@ -30,7 +30,7 @@ def xfer_to_S3(file_name, bucket, key):
 # using the hashed URL as the S3 key
 def process_url(_url, bucket_name, prefix):
   print "Processing {0}".format(_url)
-  hashed_url = haslib.md5(item['url']).hexdigest()
+  hashed_url = hashlib.md5(item['url']).hexdigest()
   f = download_file(_url)
   xfer_to_S3(f, bucket_name, prefix + str(hashed_url))
   # os.remove(f)
@@ -60,5 +60,5 @@ for fname in ['provider-urls.txt','plan-urls.txt','formulary-urls.txt']:
         _url['status'] = 'ERROR'
 
   with open(fname, 'w') as outfile:
-    with item in urls:
+    for _url in urls:
       outfile.write("{0}\n".format(json.dumps(_url)))
