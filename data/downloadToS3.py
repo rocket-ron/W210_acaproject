@@ -30,7 +30,7 @@ def xfer_to_S3(file_name, bucket, key):
 # using the hashed URL as the S3 key
 def process_url(_url, bucket_name, prefix):
   print "Processing {0}".format(_url)
-  hashed_url = hashlib.md5(item['url']).hexdigest()
+  hashed_url = hashlib.md5(_url).hexdigest()
   f = download_file(_url)
   xfer_to_S3(f, bucket_name, prefix + str(hashed_url))
   # os.remove(f)
