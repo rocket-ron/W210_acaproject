@@ -41,7 +41,7 @@ def load_urls(urlfile):
   urls = []
   with open(urlfile, 'r') as infile:
     for line in infile.readlines():
-      urls.append(json.loads(line.strip())
+      urls.append(json.loads(line.strip()))
   return urls
 
 ######################################################################
