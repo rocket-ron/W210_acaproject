@@ -16,7 +16,7 @@ def download_file(_url):
   local_file = h + '.tmp'
   r = requests.get(_url, stream=True)
   with open(local_file, 'wb') as f:
-    for chunk in r.iter_content(chunk_size=1024*64):
+    for chunk in r.iter_content(chunk_size=8196*64):
       if chunk:
         f.write(chunk)
   return local_file
@@ -65,7 +65,7 @@ for u in urls:
   try:
     _url['s3key'] = process_url(_url['url'], 'w210', 'json/')
     _url['status'] = 'PROCESSED'
-    update_cur.execute("UPDATE jsonurl SET "
+    update_cur.execute("UPDATE jsonurls SET "
                        "status = (SELECT id FROM retrieval_status WHERE status=%(status)s), "
                        "s3key = %(s3key)s "
                        "WHERE url = %(url)s" ,
