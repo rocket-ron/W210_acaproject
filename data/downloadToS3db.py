@@ -69,15 +69,15 @@ for u in urls:
                        "status = (SELECT id FROM retrieval_status WHERE status=%(status)s), "
                        "s3key = %(s3key)s "
                        "WHERE url = %(url)s" ,
-                       _url
-      )
+                       _url)
   except Exception as ex:
-    _url['status'] = 'ERROR'
-    update_cur.execute("UPDATE jsonurl SET "
-                       "status = (SELECT id FROM retrieval_status WHERE status=%(status)s) "
-                       "WHERE url = %(url)s" ,
-                       _url
-      )
+    print ex
+#    _url['status'] = 'ERROR'
+#    update_cur.execute("UPDATE jsonurl SET "
+#                       "status = (SELECT id FROM retrieval_status WHERE status=%(status)s) "
+#                       "WHERE url = %(url)s" ,
+#                       _url
+#      )
   conn.commit()
 cur.close()
 update_cur.close()
