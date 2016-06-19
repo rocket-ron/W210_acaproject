@@ -78,6 +78,10 @@ for u in urls:
                        "WHERE url = %(url)s" ,
                        _url
       )
+  conn.commit()
+cur.close()
+update_cur.close()
+conn.close()
 
 
 
