@@ -11,14 +11,17 @@ import hashlib
 import psycopg2
 
 # Download to a local file
-def download_file(_url):
+def download_file(_url, stream=False):
   h = hashlib.md5(_url).hexdigest()
   local_file = h + '.tmp'
-  r = requests.get(_url, stream=True)
+  r = requests.get(_url, stream=stream)
   with open(local_file, 'wb') as f:
-    for chunk in r.iter_content(chunk_size=8196*64):
-      if chunk:
-        f.write(chunk)
+    if stream:
+      for chunk in r.iter_content(chunk_size=8196*64):
+        if chunk:
+          f.write(chunk)
+    else:
+      f.write(r.content)
   return local_file
 
 # Upload to S3 bucket
