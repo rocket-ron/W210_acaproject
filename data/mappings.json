@@ -1,6 +1,6 @@
 {
 	"mappings": {
-		"providers": {
+		"provider": {
 			"properties": {
 				"npi":				{"type": "string"},
 				"type":				{"type": "string"},
@@ -32,7 +32,7 @@
 				"plans": {
 					"properties": {
 						"plan_id_type":	{"type": "string"},
-						"plan_id":		{"type": "integer"},
+						"plan_id":		{"type": "string"},
 						"network_tier":	{"type": "string"},
 						"drug_tier":	{"type": "string"},
 						"prior_authorization": {"type": "boolean"},
@@ -40,14 +40,43 @@
 						"quantity_limit":{"type": "boolean"}
 					}
 				},
-				"last_updated_on":	{"type": "date",
-									 "format": "strict_date_optional_time||epoch_millis"}
+				"last_updated_on":	{"type": "date"}
 			}
 		},
-		"plans": {
+			"facility": {
+			"properties": {
+				"npi":				{"type": "string"},
+				"type":				{"type": "string"},
+				"addresses": {
+					"properties": {
+						"address":	{"type": "string"},
+						"address_2":{"type": "string"},
+						"city":		{"type": "string"},
+						"state":	{"type": "string"},
+						"zip":		{"type": "string"},
+						"phone":	{"type": "string"}
+					}
+				},
+				"facility_name":	{"type": "string"},
+				"facility_type":	{"type": "string"},
+				"plans": {
+					"properties": {
+						"plan_id_type":	{"type": "string"},
+						"plan_id":		{"type": "string"},
+						"network_tier":	{"type": "string"},
+						"drug_tier":	{"type": "string"},
+						"prior_authorization": {"type": "boolean"},
+						"step_therapy": {"type": "boolean"},
+						"quantity_limit":{"type": "boolean"}
+					}
+				},
+				"last_updated_on":	{"type": "date"}
+			}
+		},
+		"plan": {
 			"properties": {
 				"plan_id_type": 	{"type": "string"},
-				"plan_id": 			{"type": "integer"},
+				"plan_id": 			{"type": "string"},
 				"marketing_name":	{"type": "string"},
 				"summary_url":		{"type": "string"},
 				"marketing_url":	{"type": "string"},
@@ -74,18 +103,17 @@
 					}
 				},
 				"benefits": 		{"type": "object"},
-				"last_updated_on":	{"type": "date",
-									 "format": "strict_date_optional_time||epoch_millis"}
+				"last_updated_on":	{"type": "date"}
 			}
 		},
-		"formularies": {
+		"drug": {
 			"properties": {
-				"rxnorm_id":	{"type": "string"},
+				"rxnorm_id":	{"type": "integer"},
 				"drug_name":	{"type": "string"},
 				"plans": {
 					"properties": {
 						"plan_id_type":	{"type": "string"},
-						"plan_id":		{"type": "integer"},
+						"plan_id":		{"type": "string"},
 						"network_tier":	{"type": "string"},
 						"drug_tier":	{"type": "string"},
 						"prior_authorization": {"type": "boolean"},
@@ -95,4 +123,5 @@
 			}
 		}
 	}
+}
 }

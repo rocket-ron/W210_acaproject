@@ -59,7 +59,5 @@ for fname in ['provider-urls.txt','plan-urls.txt','formulary-urls.txt']:
       except Exception as ex:
         _url['status'] = 'ERROR'
         print ex
-
-  with open(fname, 'w') as outfile:
-    for _url in urls:
-      outfile.write("{0}\n".format(json.dumps(_url)))
+      with open('results-'+fname, 'a') as outfile:
+        outfile.write("{0}\n".format(json.dumps(_url)))
