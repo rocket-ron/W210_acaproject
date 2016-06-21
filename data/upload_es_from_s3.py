@@ -6,7 +6,7 @@ import json
 import os
 import psycopg2
 
-# download from S3 bucket into memory buffer
+# download from S3 bucket into local temp file
 def xfer_from_s3(key, bucket):
   filename='tmp.json'
   # remove the temp file if it exists
@@ -18,6 +18,7 @@ def xfer_from_s3(key, bucket):
   response = s3.download_file(bucket, key, filename)
   return filename
 
+# get a connection to the database
 def connect_db():
   DB_NAME = 'acaproject'
   conn=psycopg2.connect(user="acaproject",
@@ -27,26 +28,78 @@ def connect_db():
                         port="5432")
   return conn
 
+# prepare the JSON documents for bulk load into elasticsearch
 def process_formulary_into_es(fname, es):
-    status = False
-    with open(fname, 'r') as infile:
-        data=infile.read().replace('\n', '')
-    try:
-        docs = json.loads(data)
-        actions = []
-        for doc in docs:
-            action = {
-                "_index": "data",
-                "_type": "drug",
-                "_source": doc
-            }
-            actions.append(action)
-        if len(actions) > 0:
-            helpers.bulk(es, actions)
-        status = True
-    except:
-        pass
-    return status
+  status = False
+  with open(fname, 'r') as infile:
+    data=infile.read().replace('\n', '')
+  try:
+    docs = json.loads(data)
+    actions = []
+    for doc in docs:
+      action = {
+          "_index": "data",
+          "_type": "drug",
+          "_source": doc
+      }
+      actions.append(action)
+    if len(actions) > 0:
+        helpers.bulk(es, actions)
+    status = True
+  except:
+    pass
+  return status
+
+# prepare the JSON docuements for bulk load into elasticsearch
+def process_plan_into_es(fname, es):
+  status = False
+  with open(fname, 'r') as infile:
+    data=infile.read().replace('\n', '')
+  try:
+    docs = json.loads(data)
+    actions = []
+    for doc in docs:
+      action = {
+          "_index": "data",
+          "_type": "plan",
+          "_source": doc
+      }
+      actions.append(action)
+    if len(actions) > 0:
+      helpers.bulk(es, actions)
+    status = True
+  except:
+      pass
+  return status
+
+# prepare the JSON documents for bulk load into elasticsearch
+def process_provider_into_es(fname, es):
+  status = False
+  with open(fname, 'r') as infile:
+    data=infile.read().replace('\n', '')
+  try:
+    docs = json.loads(data)
+    actions = []
+    for doc in docs:
+      if doc['type'] == 'INDIVIDUAL':
+        action = {
+            "_index": "data",
+            "_type": "provider",
+            "_source": doc
+        }
+      else:
+        action = {
+            "_index": "data",
+            "_type": "facility",
+            "_source": doc
+        }
+        actions.append(action)
+    if len(actions) > 0:
+      helpers.bulk(es, actions)
+    status = True
+  except:
+    pass
+  return status
 
 db_conn = connect_db()
 cur = db_conn.cursor()
@@ -57,13 +110,34 @@ ic = IndicesClient(es)
 # Get the formulary documents
 cur.execute("SELECT id,s3key FROM jsonurls WHERE es_index is FALSE AND type=3 AND s3key is not null")
 for id,key in cur.fetchall():
-    fname = xfer_from_s3('json/'+key, 'w210')
-    if process_formulary_into_es(fname, es):
-        update_cursor = db_conn.cursor()
-        update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': id})
-        db_conn.commit()
-        update_cursor.close()
+  fname = xfer_from_s3('json/'+key, 'w210')
+  if process_formulary_into_es(fname, es):
+    update_cursor = db_conn.cursor()
+    update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': id})
+    db_conn.commit()
+    update_cursor.close()
 
+# Get the plan documents
+cur.execute("SELECT id,s3key FROM jsonurls WHERE es_index is FALSE AND type=2 AND s3key is not null")
+for id,key in cur.fetchall():
+  fname = xfer_from_s3('json/'+key, 'w210')
+  if process_plan_into_es(fname, es):
+    update_cursor = db_conn.cursor()
+    update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': id})
+    db_conn.commit()
+    update_cursor.close()
+
+# Get the provider and facility documents
+cur.execute("SELECT id,s3key FROM jsonurls WHERE es_index is FALSE AND type=1 AND s3key is not null")
+for id,key in cur.fetchall():
+  fname = xfer_from_s3('json/'+key, 'w210')
+  if process_provider_into_es(fname, es):
+    update_cursor = db_conn.cursor()
+    update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': id})
+    db_conn.commit()
+    update_cursor.close()
+
+# close all database connections
 cur.close()
 db_conn.close()
 
