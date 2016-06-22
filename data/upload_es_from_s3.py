@@ -43,7 +43,7 @@ def process_formulary_into_es(fname, es):
           "_source": doc
       }
       actions.append(action)
-      if len(actions) > 0 and len(actions) % 20 == 0:
+      if len(actions) > 0 and len(actions) % 10 == 0:
           helpers.bulk(es, actions)
       status = True
   except KeyboardInterrupt, SystemExit:
@@ -68,7 +68,7 @@ def process_plan_into_es(fname, es):
           "_source": doc
       }
       actions.append(action)
-      if len(actions) > 0 and len(actions) % 20 == 0:
+      if len(actions) > 0 and len(actions) % 10 == 0:
         helpers.bulk(es, actions)
         status = True
   except KeyboardInterrupt, SystemExit:
@@ -100,7 +100,7 @@ def process_provider_into_es(fname, es):
               "_source": doc
           }
           actions.append(action)
-      if len(actions) > 0:
+      if len(actions) > 0 and len(actions) % 10 == 0:
         helpers.bulk(es, actions)
       status = True
   except KeyboardInterrupt, SystemExit:
