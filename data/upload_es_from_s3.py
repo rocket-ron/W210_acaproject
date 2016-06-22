@@ -49,6 +49,8 @@ def process_formulary_into_es(fname, es):
   except KeyboardInterrupt, SystemExit:
     conn.rollback()
     raise
+  except UnicodeDecodeError:
+    pass
   return status
 
 # prepare the JSON docuements for bulk load into elasticsearch
@@ -72,6 +74,8 @@ def process_plan_into_es(fname, es):
   except KeyboardInterrupt, SystemExit:
     conn.rollback()
     raise
+  except UnicodeDecodeError:
+    pass
   return status
 
 # prepare the JSON documents for bulk load into elasticsearch
@@ -102,6 +106,8 @@ def process_provider_into_es(fname, es):
   except KeyboardInterrupt, SystemExit:
     conn.rollback()
     raise
+  except UnicodeDecodeError:
+    pass
   return status
 
 db_conn = connect_db()
