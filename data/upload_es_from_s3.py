@@ -35,17 +35,17 @@ def process_formulary_into_es(fname, es):
     data=infile.read().replace('\n', '')
   try:
     docs = json.loads(data)
-    actions = []
-    for doc in docs:
+    for idx,doc in enumerate(docs):
+      actions = []
       action = {
           "_index": "data",
           "_type": "drug",
           "_source": doc
       }
       actions.append(action)
-    if len(actions) > 0:
-        helpers.bulk(es, actions)
-    status = True
+      if len(actions) > 0 and len(actions) % 20 == 0:
+          helpers.bulk(es, actions)
+      status = True
   except KeyboardInterrupt, SystemExit:
     conn.rollback()
     raise
@@ -60,17 +60,17 @@ def process_plan_into_es(fname, es):
     data=infile.read().replace('\n', '')
   try:
     docs = json.loads(data)
-    actions = []
-    for doc in docs:
+    for idx, doc in enumerate(docs):
+      actions = []
       action = {
           "_index": "data",
           "_type": "plan",
           "_source": doc
       }
       actions.append(action)
-    if len(actions) > 0:
-      helpers.bulk(es, actions)
-    status = True
+      if len(actions) > 0 and len(actions) % 20 == 0:
+        helpers.bulk(es, actions)
+        status = True
   except KeyboardInterrupt, SystemExit:
     conn.rollback()
     raise
@@ -85,24 +85,24 @@ def process_provider_into_es(fname, es):
     data=infile.read().replace('\n', '')
   try:
     docs = json.loads(data)
-    actions = []
-    for doc in docs:
-      if doc['type'] == 'INDIVIDUAL':
-        action = {
-            "_index": "data",
-            "_type": "provider",
-            "_source": doc
-        }
-      else:
-        action = {
-            "_index": "data",
-            "_type": "facility",
-            "_source": doc
-        }
-        actions.append(action)
-    if len(actions) > 0:
-      helpers.bulk(es, actions)
-    status = True
+    for idx, doc in enumerate(docs):
+      actions = []
+        if doc['type'] == 'INDIVIDUAL':
+          action = {
+              "_index": "data",
+              "_type": "provider",
+              "_source": doc
+          }
+        else:
+          action = {
+              "_index": "data",
+              "_type": "facility",
+              "_source": doc
+          }
+          actions.append(action)
+      if len(actions) > 0:
+        helpers.bulk(es, actions)
+      status = True
   except KeyboardInterrupt, SystemExit:
     conn.rollback()
     raise
