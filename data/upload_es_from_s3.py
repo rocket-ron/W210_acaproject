@@ -108,6 +108,7 @@ es = Elasticsearch("https://search-acaproject-yayvqakrnkdvdfd5m6kyqonp5a.us-west
 ic = IndicesClient(es)
 
 # Get the formulary documents
+count = 0;
 cur.execute("SELECT id,s3key FROM jsonurls WHERE es_index is FALSE AND type=3 AND s3key is not null")
 for id,key in cur.fetchall():
   fname = xfer_from_s3('json/'+key, 'w210')
@@ -116,8 +117,13 @@ for id,key in cur.fetchall():
     update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': id})
     db_conn.commit()
     update_cursor.close()
+  else:
+    count += 1
+
+print "{0} formularies failed to upload".format(count)
 
 # Get the plan documents
+count = 0
 cur.execute("SELECT id,s3key FROM jsonurls WHERE es_index is FALSE AND type=2 AND s3key is not null")
 for id,key in cur.fetchall():
   fname = xfer_from_s3('json/'+key, 'w210')
@@ -126,8 +132,13 @@ for id,key in cur.fetchall():
     update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': id})
     db_conn.commit()
     update_cursor.close()
+  else:
+    count += 1
+
+print "{0} plans failed to upload".format(count)
 
 # Get the provider and facility documents
+count = 0
 cur.execute("SELECT id,s3key FROM jsonurls WHERE es_index is FALSE AND type=1 AND s3key is not null")
 for id,key in cur.fetchall():
   fname = xfer_from_s3('json/'+key, 'w210')
@@ -136,9 +147,11 @@ for id,key in cur.fetchall():
     update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': id})
     db_conn.commit()
     update_cursor.close()
+  else:
+    count += 1
+
+print "{0} providers failed to upload".format(count)
 
 # close all database connections
 cur.close()
 db_conn.close()
-
-
