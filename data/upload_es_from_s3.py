@@ -28,8 +28,21 @@ def connect_db():
                         port="5432")
   return conn
 
+# progress indicator
+def spinning_cursor():
+  while True:
+    for cursor in '|/-\\':
+      yield cursor
+
+def bump_spinner(spinner):
+  sys.stdout.write(spinner.next())
+  sys.stdout.flush()
+  time.sleep(0.1)
+  sys.stdout.write('\b')
+
 # prepare the JSON documents for bulk load into elasticsearch
 def process_formulary_into_es(fname, es):
+  spinner = spinning_cursor()
   status = False
   with open(fname, 'r') as infile:
     data=infile.read().replace('\n', '')
@@ -44,17 +57,19 @@ def process_formulary_into_es(fname, es):
       }
       actions.append(action)
       if len(actions) > 0 and len(actions) % 10 == 0:
-          helpers.bulk(es, actions)
-      status = True
-  except KeyboardInterrupt, SystemExit:
+        helpers.bulk(es, actions)
+        status = True
+        bump_spinner(spinner)
+  except (KeyboardInterrupt, SystemExit):
     conn.rollback()
     raise
-  except UnicodeDecodeError:
+  except (UnicodeDecodeError, ValueError):
     pass
   return status
 
 # prepare the JSON docuements for bulk load into elasticsearch
 def process_plan_into_es(fname, es):
+  spinner = spinning_cursor()
   status = False
   with open(fname, 'r') as infile:
     data=infile.read().replace('\n', '')
@@ -71,15 +86,17 @@ def process_plan_into_es(fname, es):
       if len(actions) > 0 and len(actions) % 10 == 0:
         helpers.bulk(es, actions)
         status = True
-  except KeyboardInterrupt, SystemExit:
+        bump_spinner(spinner)
+  except (KeyboardInterrupt, SystemExit):
     conn.rollback()
     raise
-  except UnicodeDecodeError:
+  except (UnicodeDecodeError, ValueError):
     pass
   return status
 
 # prepare the JSON documents for bulk load into elasticsearch
 def process_provider_into_es(fname, es):
+  spinner = spinning_cursor()
   status = False
   with open(fname, 'r') as infile:
     data=infile.read().replace('\n', '')
@@ -87,26 +104,27 @@ def process_provider_into_es(fname, es):
     docs = json.loads(data)
     for idx, doc in enumerate(docs):
       actions = []
-        if doc['type'] == 'INDIVIDUAL':
-          action = {
-              "_index": "data",
-              "_type": "provider",
-              "_source": doc
-          }
-        else:
-          action = {
-              "_index": "data",
-              "_type": "facility",
-              "_source": doc
-          }
-          actions.append(action)
+      if doc['type'] == 'INDIVIDUAL':
+        action = {
+            "_index": "data",
+            "_type": "provider"
+            "_source": doc
+        }
+      else:
+        action = {
+            "_index": "data",
+            "_type": "facility",
+            "_source": doc
+        }
+      actions.append(action)
       if len(actions) > 0 and len(actions) % 10 == 0:
         helpers.bulk(es, actions)
-      status = True
-  except KeyboardInterrupt, SystemExit:
+        status = True
+        bump_spinner(spinner)
+  except (KeyboardInterrupt, SystemExit):
     conn.rollback()
     raise
-  except UnicodeDecodeError:
+  except (UnicodeDecodeError, ValueError):
     pass
   return status
 
@@ -119,11 +137,11 @@ ic = IndicesClient(es)
 # Get the formulary documents
 count = 0;
 cur.execute("SELECT id,s3key FROM jsonurls WHERE es_index is FALSE AND type=3 AND s3key is not null")
-for id,key in cur.fetchall():
+for idx,key in cur.fetchall():
   fname = xfer_from_s3('json/'+key, 'w210')
   if process_formulary_into_es(fname, es):
     update_cursor = db_conn.cursor()
-    update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': id})
+    update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': idx})
     db_conn.commit()
     update_cursor.close()
   else:
@@ -134,11 +152,11 @@ print "{0} formularies failed to upload".format(count)
 # Get the plan documents
 count = 0
 cur.execute("SELECT id,s3key FROM jsonurls WHERE es_index is FALSE AND type=2 AND s3key is not null")
-for id,key in cur.fetchall():
+for idx,key in cur.fetchall():
   fname = xfer_from_s3('json/'+key, 'w210')
   if process_plan_into_es(fname, es):
     update_cursor = db_conn.cursor()
-    update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': id})
+    update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': idx})
     db_conn.commit()
     update_cursor.close()
   else:
@@ -149,11 +167,11 @@ print "{0} plans failed to upload".format(count)
 # Get the provider and facility documents
 count = 0
 cur.execute("SELECT id,s3key FROM jsonurls WHERE es_index is FALSE AND type=1 AND s3key is not null")
-for id,key in cur.fetchall():
+for idx,key in cur.fetchall():
   fname = xfer_from_s3('json/'+key, 'w210')
   if process_provider_into_es(fname, es):
     update_cursor = db_conn.cursor()
-    update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': id})
+    update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': idx})
     db_conn.commit()
     update_cursor.close()
   else:
