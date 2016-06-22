@@ -46,8 +46,9 @@ def process_formulary_into_es(fname, es):
     if len(actions) > 0:
         helpers.bulk(es, actions)
     status = True
-  except:
-    pass
+  except KeyboardInterrupt, SystemExit:
+    conn.rollback()
+    raise
   return status
 
 # prepare the JSON docuements for bulk load into elasticsearch
@@ -68,8 +69,9 @@ def process_plan_into_es(fname, es):
     if len(actions) > 0:
       helpers.bulk(es, actions)
     status = True
-  except:
-      pass
+  except KeyboardInterrupt, SystemExit:
+    conn.rollback()
+    raise
   return status
 
 # prepare the JSON documents for bulk load into elasticsearch
@@ -97,8 +99,9 @@ def process_provider_into_es(fname, es):
     if len(actions) > 0:
       helpers.bulk(es, actions)
     status = True
-  except:
-    pass
+  except KeyboardInterrupt, SystemExit:
+    conn.rollback()
+    raise
   return status
 
 db_conn = connect_db()
