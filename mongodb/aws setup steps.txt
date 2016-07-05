@@ -1,0 +1,69 @@
+$ sudo yum -y update
+
+$ echo "[MongoDB]
+name=MongoDB Repository
+baseurl=http://downloads-distro.mongodb.org/repo/redhat/os/x86_64
+gpgcheck=0
+enabled=1" | sudo tee -a /etc/yum.repos.d/mongodb.repo
+
+$ sudo yum install -y mongodb-org-server mongodb-org-shell mongodb-org-tools
+
+
+
+$ sudo mkdir /data /log /journal
+
+$ sudo mkfs.ext4 /dev/sdba
+$ sudo mkfs.ext4 /dev/sdbb
+$ sudo mkfs.ext4 /dev/sdbc
+
+$ echo '/dev/sdba /data ext4 defaults,auto,noatime,noexec 0 0
+/dev/sdbb /journal ext4 defaults,auto,noatime,noexec 0 0
+/dev/sdbc /log ext4 defaults,auto,noatime,noexec 0 0' | sudo tee -a /etc/fstab
+
+$ sudo mount /data
+$ sudo mount /journal
+$ sudo mount /log
+
+$ sudo chown mongod:mongod /data /journal /log
+
+$ sudo ln -s /journal /data/journal
+
+
+$ sudo nano /etc/security/limits.conf
+* soft nofile 64000
+* hard nofile 64000
+* soft nproc 32000
+* hard nproc 32000
+
+$ sudo nano /etc/security/limits.d/90-nproc.conf
+* soft nproc 32000
+* hard nproc 32000
+
+$ sudo blockdev --setra 32 /dev/sdba
+$ sudo blockdev --setra 32 /dev/sdbb
+$ sudo blockdev --setra 32 /dev/sdbc
+
+echo 'ACTION=="add", KERNEL=="sdba", ATTR{bdi/read_ahead_kb}="16"' | sudo tee -a /etc/udev/rules.d/85-ebs.rules
+echo 'ACTION=="add", KERNEL=="sdbb", ATTR{bdi/read_ahead_kb}="16"' | sudo tee -a /etc/udev/rules.d/85-ebs.rules
+echo 'ACTION=="add", KERNEL=="sdbc", ATTR{bdi/read_ahead_kb}="16"' | sudo tee -a /etc/udev/rules.d/85-ebs.rules
+
+# for those nodes that run the Python data ingest scripts:
+
+sudo yum group install "Development Tools"
+sudo yum install postgresql-devel
+sudo pip install boto3
+sudo pip install psycopg2
+sudo pip install pymongo
+sudo pip install ijson
+sudo pip install dateinfer
+
+# add AWS creds
+mkdir ~/.aws
+echo "[default]
+aws_access_key_id = AKIAJFLYXRCK5GNNIPNQ
+aws_secret_access_key = 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" | tee -a ~/.aws/credentials
+
+echo "[default]
+output = text
+region = us-west-1" | tee -a ~/.aws/config
+

@@ -1,5 +1,3 @@
-from elasticsearch import Elasticsearch, helpers
-from elasticsearch.client import IndicesClient
 import boto3
 import dateinfer
 import ijson
@@ -7,18 +5,20 @@ import os
 import psycopg2
 import time
 import argparse
-
+import pymongo
 
 arg_parser = argparse.ArgumentParser(description='Process JSON CMS PUF data')
 arg_parser.add_argument('--drugs', dest='drugs', action='store_true', default=False)
 arg_parser.add_argument('--plans', dest='plans', action='store_true', default=False)
 arg_parser.add_argument('--providers', dest='providers', action='store_true', default=False)
+arg_parser.add_argument('--mongo', dest='mongohost', default='127.0.0.1')
 
 args = arg_parser.parse_args()
 
 
 # download from S3 bucket into local temp file
 def xfer_from_s3(key, bucket):
+    print "Starting to download {0}...".format(key)
     filename = 'tmp.json'
     # remove the temp file if it exists
     try:
@@ -27,6 +27,7 @@ def xfer_from_s3(key, bucket):
         pass
     s3 = boto3.client('s3')
     response = s3.download_file(bucket, key, filename)
+    print "Download of {0} complete\n".format(key)
     return filename
 
 
@@ -40,46 +41,52 @@ def connect_db():
     return conn
 
 
-# utility function to test if a string is a valid floating point number
-def is_number(s):
+# get a connection to MongoDB
+def connect_mongodb(host):
     try:
-        float(s)
-        return True
+        mongodb_conn = pymongo.MongoClient(host, 27017)
+        return mongodb_conn
+    except pymongo.errors.ConnectionFailure as e:
+        print "Unable to connect to MongoDB instance\n{0}\n".format(str(e))
+
+
+# utility function to test if a string is a valid floating point number
+def ensure_is_float(s):
+    if type(s) == str:
+        if 'Decimal' in s:
+            pass
+    try:
+        t = float(s)
+        return t
     except ValueError:
-        return False
+        return 0.0
 
 
-# prepare the JSON documents for bulk load into elasticsearch
-def process_formulary_into_es(fname, es, conn):
+# prepare the JSON documents for loading into mongodb
+def process_formulary_into_mongo(fname, db, conn):
     status = False
+    count = 0
     with open(fname, 'r') as infile:
-        actions = []
         try:
             for doc in ijson.items(infile, "item"):
-                action = {
-                    "_index": "data",
-                    "_type": "drug",
-                    "_source": doc
-                }
-                actions.append(action)
-                if len(actions) > 0 and len(actions) % 50 == 0:
-                    helpers.bulk(es, actions)
-                    status = True
-                    actions = []
+                db.drugs.save(doc)
+                count += 1
+            status = True
+            print "Wrote {0} drug docs to MongoDB\n".format(count)
         except (KeyboardInterrupt, SystemExit):
             conn.rollback()
             raise
         except (UnicodeDecodeError, ValueError, ijson.JSONError) as ex:
             print "{0}\n".format(str(ex))
             print
-        return status
+    return status
 
 
-# prepare the JSON documents for bulk load into elasticsearch
-def process_plan_into_es(fname, es, conn):
+# prepare the JSON documents for loading into mongodb
+def process_plan_into_mongo(fname, db, conn):
     status = False
+    count = 0
     with open(fname, 'r') as infile:
-        actions = []
         try:
             for doc in ijson.items(infile, "item"):
                 # not everyone adheres to the ISO date requirement
@@ -88,87 +95,81 @@ def process_plan_into_es(fname, es, conn):
                     _date = time.strptime(doc['last_updated_on'], inferred_date_format)
                     doc['last_updated_on'] = time.strftime('%Y-%m-%d', _date)
 
+                # first of all make sure that the coinsurance rate is a number and not a string
+                # second of all check to see if it is a Decimal and convert it to a float if it is.
                 if 'formulary' in doc:
                     if type(doc['formulary']) == list:
                         for f in doc['formulary']:
-                            if type(f) == unicode:
-                                a = doc['formulary'].keys()
-                                print doc
-                                pass
                             if 'cost_sharing' in f:
                                 if type(f['cost_sharing']) != list:
                                     if f['cost_sharing']['coinsurance_rate']:
                                         if f['cost_sharing']['coinsurance_rate']:
-                                            if not is_number(f['cost_sharing']['coinsurance_rate']):
-                                                f['cost_sharing']['coinsurance_rate'] = 0.0
+                                            f['cost_sharing']['coinsurance_rate'] = \
+                                                ensure_is_float(f['cost_sharing']['coinsurance_rate'])
+                                        if f['cost_sharing']['copay_amount']:
+                                            f['cost_sharing']['copay_amount'] = \
+                                                ensure_is_float(f['cost_sharing']['copay_amount'])
                                 else:
                                     for item in f['cost_sharing']:
-                                        if item['coinsurance_rate']:
-                                            if not is_number(item['coinsurance_rate']):
-                                                item['coinsurance_rate'] = 0.0
+                                        if 'coinsurance_rate' in item:
+                                            item['coinsurance_rate'] = ensure_is_float(item['coinsurance_rate'])
+                                        if 'copay_amount' in item:
+                                            item['copay_amount'] = ensure_is_float(item['copay_amount'])
                     else:
                         if 'cost_sharing' in doc['formulary'].keys():
                             if type(doc['formulary']['cost_sharing']) != list:
                                 if doc['formulary']['cost_sharing']['coinsurance_rate']:
-                                    if doc['formulary']['cost_sharing']['coinsurance_rate']:
-                                        if not is_number(doc['formulary']['cost_sharing']['coinsurance_rate']):
-                                            doc['formulary']['cost_sharing']['coinsurance_rate'] = 0
+                                    doc['formulary']['cost_sharing']['coinsurance_rate'] = \
+                                        ensure_is_float(doc['formulary']['cost_sharing']['coinsurance_rate'])
+                                if doc['formulary']['cost_sharing']['copay_amount']:
+                                    doc['formulary']['cost_sharing']['copay_amount'] = \
+                                        ensure_is_float(doc['formulary']['cost_sharing']['copay_amount'])
                             else:
                                 for cost_share in doc['formulary']['cost_sharing']:
-                                    if cost_share['coinsurance_rate']:
-                                        if not is_number(cost_share['coinsurance_rate']):
-                                            cost_share['coinsurance_rate'] = 0
-
-                action = {
-                    "_index": "data",
-                    "_type": "plan",
-                    "_source": doc
-                }
-                actions.append(action)
-                if len(actions) > 0 and len(actions) % 10 == 0:
-                    helpers.bulk(es, actions)
-                    status = True
-                    actions = []
+                                    if 'coinsurance_rate' in cost_share:
+                                        cost_share['coinsurance_rate'] = ensure_is_float(cost_share['coinsurance_rate'])
+                                    if 'copay_amount' in cost_share:
+                                        cost_share['copay_amount'] = ensure_is_float(cost_share['copay_amount'])
+                db.plans.save(doc)
+                count += 1
+            status = True
+            print "Wrote {0} plan docs to mongodb\n".format(count)
         except (KeyboardInterrupt, SystemExit):
             conn.rollback()
             raise
         except (UnicodeDecodeError, ValueError, ijson.JSONError) as ex:
             print "{0}\n".format(str(ex))
-        return status
-
-
-# prepare the JSON documents for bulk load into elasticsearch
-def process_provider_into_es(fname, es, conn):
-    status = False
-    with open(fname, 'r') as infile:
-        actions = []
-        try:
-            for doc in ijson.items(infile, "item"):
-                if doc['type'] == 'INDIVIDUAL':
-                    action = {
-                        "_index": "data",
-                        "_type": "provider",
-                        "_source": doc
-                        }
-                else:
-                    action = {
-                        "_index": "data",
-                        "_type": "facility",
-                        "_source": doc
-                    }
-                actions.append(action)
-                if len(actions) > 0 and len(actions) % 50 == 0:
-                    helpers.bulk(es, actions)
-                    status = True
-                    actions = []
-        except (KeyboardInterrupt, SystemExit):
-            conn.rollback()
-            raise
-        except (UnicodeDecodeError, ValueError, ijson.JSONError):
+        except Exception as ex:
             print "{0}\n".format(str(ex))
     return status
 
-# for debugging control
+
+# prepare the JSON documents for loading into mongodb
+def process_provider_into_mongo(fname, db, conn):
+    provider_count = 0
+    facilities_count = 0
+    status = False
+    with open(fname, 'r') as infile:
+        try:
+            for doc in ijson.items(infile, "item"):
+                if doc['type'] == 'INDIVIDUAL':
+                    db.providers.save(doc)
+                    providers_count += 1
+                else:
+                    db.facilities.save(doc)
+                    facilities_count += 1
+            status = True
+        except (KeyboardInterrupt, SystemExit):
+            conn.rollback()
+            raise
+        except (UnicodeDecodeError, ValueError, ijson.JSONError) as ex:
+            print "{0}\n".format(str(ex))
+    if (providers_count > 0):
+        print "Wrote {0} provider documents to MongoDB\n".format(provider_count)
+    if (facilities_count > 0):
+        print "Wrote {0} provider documents to MongoDB\n".format(facilities_count)
+    return status
+
 do_drugs = args.drugs
 do_plans = args.plans
 do_providers = args.providers
@@ -176,18 +177,19 @@ do_providers = args.providers
 db_conn = connect_db()
 cur = db_conn.cursor()
 
-es = Elasticsearch("https://search-acaproject-yayvqakrnkdvdfd5m6kyqonp5a.us-west-1.es.amazonaws.com/")
-ic = IndicesClient(es)
+mongo = connect_mongodb(args.mongohost)
+# mongo_db = mongo.data
+
 
 if do_drugs:
     # Get the formulary documents
     count = 0
-    cur.execute("SELECT id,s3key FROM jsonurls WHERE es_index is FALSE AND type=3 AND s3key is not null")
+    cur.execute("SELECT id,s3key FROM jsonurls WHERE mongodb_upload is FALSE AND type=3 AND s3key is not null")
     for idx, key in cur.fetchall():
         fname = xfer_from_s3('json/' + key, 'w210')
-        if process_formulary_into_es(fname, es, db_conn):
+        if process_formulary_into_mongo(fname, mongo.formularies, db_conn):
             update_cursor = db_conn.cursor()
-            update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': idx})
+            update_cursor.execute("UPDATE jsonurls SET mongodb_upload=TRUE WHERE id=%(id)s", {'id': idx})
             db_conn.commit()
             update_cursor.close()
         else:
@@ -200,12 +202,12 @@ if do_drugs:
 if do_plans:
     # Get the plan documents
     count = 0
-    cur.execute("SELECT id,s3key FROM jsonurls WHERE es_index is FALSE AND type=2 AND s3key is not null")
+    cur.execute("SELECT id,s3key FROM jsonurls WHERE mongodb_upload is FALSE AND type=2 AND s3key is not null")
     for idx, key in cur.fetchall():
         fname = xfer_from_s3('json/' + key, 'w210')
-        if process_plan_into_es(fname, es, db_conn):
+        if process_plan_into_mongo(fname, mongo.plans, db_conn):
             update_cursor = db_conn.cursor()
-            update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': idx})
+            update_cursor.execute("UPDATE jsonurls SET mongodb_upload=TRUE WHERE id=%(id)s", {'id': idx})
             db_conn.commit()
             update_cursor.close()
         else:
@@ -218,12 +220,12 @@ if do_plans:
 if do_providers:
     # Get the provider and facility documents
     count = 0
-    cur.execute("SELECT id,s3key FROM jsonurls WHERE es_index is FALSE AND type=1 AND s3key is not null")
+    cur.execute("SELECT id,s3key FROM jsonurls WHERE mongodb_upload is FALSE AND type=1 AND s3key is not null")
     for idx, key in cur.fetchall():
         fname = xfer_from_s3('json/' + key, 'w210')
-        if process_provider_into_es(fname, es, db_conn):
+        if process_provider_into_mongo(fname, mongo.providers, db_conn):
             update_cursor = db_conn.cursor()
-            update_cursor.execute("UPDATE jsonurls SET es_index=TRUE WHERE id=%(id)s", {'id': idx})
+            update_cursor.execute("UPDATE jsonurls SET mongodb_upload=TRUE WHERE id=%(id)s", {'id': idx})
             db_conn.commit()
             update_cursor.close()
         else:

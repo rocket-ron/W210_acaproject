@@ -1,0 +1,129 @@
+- hosts: all
+  gather_facts: yes
+  remote_user: root
+  become: true
+  tasks:
+
+    - name: update hosts file
+      lineinfile:
+        dest=/etc/hosts
+        regexp='{{ item }}.*$'
+        line="{{ item }} {{ hostvars[item].host_alias }}"
+        state=present
+      with_items: groups['all']
+
+    - name: install elasticsearch repo
+      copy: src=templates/elasticsearch.repo dest=/etc/yum.repos.d/ owner=root group=root mode=0644
+
+    - name: install epel-release
+      yum: name=epel-release state=latest
+
+    - name: install openjdk
+      yum: name=java-1.8.0-openjdk-devel state=latest
+
+    - name: copy set java script
+      copy: src=templates/set_java.sh dest=/root/set_java.sh mode=755
+
+    - name: execute set java script
+      command: sh /root/set_java.sh
+
+    - name: install packages
+      yum: pkg={{item}} state=latest
+      with_items:
+        - net-tools
+        - jq
+        - python-pip
+        - git
+
+    - name: install elasticsearch
+      yum: name=elasticsearch state=latest
+
+    - name: reload systemctl daemon
+      shell: systemctl daemon-reload
+
+    - name: enable elasticsearch service daemon
+      shell: systemctl enable elasticsearch.service
+
+    - name: set cluster name
+      lineinfile: 'dest=/etc/elasticsearch/elasticsearch.yml
+        state=present 
+        insertafter="^# cluster.name" 
+        line="cluster.name: hades"'
+
+    - name: set cluster node name
+      lineinfile: 'dest=/etc/elasticsearch/elasticsearch.yml
+        state=present 
+        insertafter="^# node.name" 
+        line="node.name: {{ hostvars[inventory_hostname].host_alias }}"'
+
+    - name: set node as data node
+      lineinfile: 'dest=/etc/elasticsearch/elasticsearch.yml
+        state=present 
+        insertafter="^node.name" 
+        line="node.data: true"'
+
+    - name: set network.host
+      lineinfile: 'dest=/etc/elasticsearch/elasticsearch.yml
+        state=present 
+        insertafter="^# network.host" 
+        line="network.host: {{ inventory_hostname }}"'
+
+    - name: set network.bind
+      lineinfile: 'dest=/etc/elasticsearch/elasticsearch.yml
+        state=present 
+        insertafter="^network.host" 
+        line="network.bind_host: {{ inventory_hostname }}"'
+
+    - name: disable multicast discovery
+      lineinfile: 'dest=/etc/elasticsearch/elasticsearch.yml
+        state=present 
+        insertafter="^# discovery.zen.ping.unicast.hosts" 
+        line="discovery.zen.ping.multicast.enable: false"'
+
+    - name: set discovery node list
+      lineinfile: 'dest=/etc/elasticsearch/elasticsearch.yml
+        state=present 
+        insertafter="^discovery.zen.ping.multicast.enable" 
+        line="discovery.zen.ping.unicast.hosts: [\"{% for host in groups["all"] %}{{ hostvars[host].host_alias }}\"{%if not loop.last %},\"{% endif %}{% endfor %}]"'
+
+    - name: install jettro plugin
+      command: /usr/share/elasticsearch/bin/plugin install jettro/elasticsearch-gui
+        creates=/usr/share/elasticsearch/plugins/gui/package.json
+
+    - name: enable cors for jettro
+      lineinfile: 'dest=/etc/elasticsearch/elasticsearch.yml
+        state=present 
+        insertafter=EOF
+        line="http.cors.enabled: true"'
+    - name: enable cors origin
+      lineinfile: 'dest=/etc/elasticsearch/elasticsearch.yml
+        state=present 
+        insertafter=EOF
+        line="http.cors.allow-origin: \"http://www.gridshore.nl\""' 
+
+    - name: install python modules
+      sudo: true
+      pip: name={{item}}
+      with_items:
+        - elasticsearch
+        - softlayer-object-storage    
+
+- hosts: master
+  remote_user: root
+  tasks:
+
+    - name: set node as master node
+      lineinfile: 'dest=/etc/elasticsearch/elasticsearch.yml
+        state=present 
+        insertafter="^node.data" 
+        line="node.master: true"'
+
+    - name: start master node elasticsearch service
+      shell: service elasticsearch start
+
+- hosts: datanodes
+  remote_user: root
+  tasks:
+
+    - name: start data node elasticsearch service
+      shell: service elasticsearch start     
