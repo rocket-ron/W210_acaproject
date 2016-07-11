@@ -1,11 +1,14 @@
+from ijson.backends import yajl2
+from ijson import common, JSONError
+from itertools import imap
 import boto3
 import dateinfer
-import ijson
 import os
 import psycopg2
 import time
 import argparse
 import pymongo
+from pymongo.errors import ConnectionFailure
 
 arg_parser = argparse.ArgumentParser(description='Process JSON CMS PUF data')
 arg_parser.add_argument('--drugs', dest='drugs', action='store_true', default=False)
@@ -46,15 +49,14 @@ def connect_mongodb(host):
     try:
         mongodb_conn = pymongo.MongoClient(host, 27017)
         return mongodb_conn
-    except pymongo.errors.ConnectionFailure as e:
+    except ConnectionFailure as e:
         print "Unable to connect to MongoDB instance\n{0}\n".format(str(e))
 
 
 # utility function to test if a string is a valid floating point number
 def ensure_is_float(s):
-    if type(s) == str:
-        if 'Decimal' in s:
-            pass
+    if s is None:
+        return 0.0
     try:
         t = float(s)
         return t
@@ -62,13 +64,23 @@ def ensure_is_float(s):
         return 0.0
 
 
+# override ijson Decimal implementation for numeric values to use float
+def floaten(event):
+    if event[1] == 'number':
+        return (event[0], event[1], float(event[2]))
+    else:
+        return event
+
+
 # prepare the JSON documents for loading into mongodb
 def process_formulary_into_mongo(fname, db, conn):
     status = False
     count = 0
     with open(fname, 'r') as infile:
+        event = imap(floaten, yajl2.parse(infile))
+        data = common.items(event, 'item')
         try:
-            for doc in ijson.items(infile, "item"):
+            for doc in data:
                 db.drugs.save(doc)
                 count += 1
             status = True
@@ -76,7 +88,7 @@ def process_formulary_into_mongo(fname, db, conn):
         except (KeyboardInterrupt, SystemExit):
             conn.rollback()
             raise
-        except (UnicodeDecodeError, ValueError, ijson.JSONError) as ex:
+        except (UnicodeDecodeError, ValueError, JSONError) as ex:
             print "{0}\n".format(str(ex))
             print
     return status
@@ -87,8 +99,11 @@ def process_plan_into_mongo(fname, db, conn):
     status = False
     count = 0
     with open(fname, 'r') as infile:
+        # use the float override for ijson parser to prevent Decimal values
+        event = imap(floaten, yajl2.parse(infile))
+        data = common.items(event, 'item')
         try:
-            for doc in ijson.items(infile, "item"):
+            for doc in data:
                 # not everyone adheres to the ISO date requirement
                 if 'last_updated_on' in doc:
                     inferred_date_format = dateinfer.infer([doc['last_updated_on']])
@@ -98,6 +113,11 @@ def process_plan_into_mongo(fname, db, conn):
                 # first of all make sure that the coinsurance rate is a number and not a string
                 # second of all check to see if it is a Decimal and convert it to a float if it is.
                 if 'formulary' in doc:
+                    if type(doc['formulary']) == dict:
+                        formulary = []
+                        formulary.append(doc['formulary'])
+                        doc['formulary']=formulary
+
                     if type(doc['formulary']) == list:
                         for f in doc['formulary']:
                             if 'cost_sharing' in f:
@@ -115,21 +135,9 @@ def process_plan_into_mongo(fname, db, conn):
                                             item['coinsurance_rate'] = ensure_is_float(item['coinsurance_rate'])
                                         if 'copay_amount' in item:
                                             item['copay_amount'] = ensure_is_float(item['copay_amount'])
-                    else:
-                        if 'cost_sharing' in doc['formulary'].keys():
-                            if type(doc['formulary']['cost_sharing']) != list:
-                                if doc['formulary']['cost_sharing']['coinsurance_rate']:
-                                    doc['formulary']['cost_sharing']['coinsurance_rate'] = \
-                                        ensure_is_float(doc['formulary']['cost_sharing']['coinsurance_rate'])
-                                if doc['formulary']['cost_sharing']['copay_amount']:
-                                    doc['formulary']['cost_sharing']['copay_amount'] = \
-                                        ensure_is_float(doc['formulary']['cost_sharing']['copay_amount'])
-                            else:
-                                for cost_share in doc['formulary']['cost_sharing']:
-                                    if 'coinsurance_rate' in cost_share:
-                                        cost_share['coinsurance_rate'] = ensure_is_float(cost_share['coinsurance_rate'])
-                                    if 'copay_amount' in cost_share:
-                                        cost_share['copay_amount'] = ensure_is_float(cost_share['copay_amount'])
+
+
+
                 db.plans.save(doc)
                 count += 1
             status = True
@@ -137,7 +145,7 @@ def process_plan_into_mongo(fname, db, conn):
         except (KeyboardInterrupt, SystemExit):
             conn.rollback()
             raise
-        except (UnicodeDecodeError, ValueError, ijson.JSONError) as ex:
+        except (UnicodeDecodeError, ValueError, JSONError) as ex:
             print "{0}\n".format(str(ex))
         except Exception as ex:
             print "{0}\n".format(str(ex))
@@ -150,11 +158,13 @@ def process_provider_into_mongo(fname, db, conn):
     facilities_count = 0
     status = False
     with open(fname, 'r') as infile:
+        event = imap(floaten, yajl2.parse(infile))
+        data = common.items(event, 'item')
         try:
-            for doc in ijson.items(infile, "item"):
+            for doc in data:
                 if doc['type'] == 'INDIVIDUAL':
                     db.providers.save(doc)
-                    providers_count += 1
+                    provider_count += 1
                 else:
                     db.facilities.save(doc)
                     facilities_count += 1
@@ -162,9 +172,9 @@ def process_provider_into_mongo(fname, db, conn):
         except (KeyboardInterrupt, SystemExit):
             conn.rollback()
             raise
-        except (UnicodeDecodeError, ValueError, ijson.JSONError) as ex:
+        except (UnicodeDecodeError, ValueError, JSONError) as ex:
             print "{0}\n".format(str(ex))
-    if (providers_count > 0):
+    if (provider_count > 0):
         print "Wrote {0} provider documents to MongoDB\n".format(provider_count)
     if (facilities_count > 0):
         print "Wrote {0} provider documents to MongoDB\n".format(facilities_count)
@@ -178,6 +188,7 @@ db_conn = connect_db()
 cur = db_conn.cursor()
 
 mongo = connect_mongodb(args.mongohost)
+
 # mongo_db = mongo.data
 
 
@@ -203,6 +214,7 @@ if do_plans:
     # Get the plan documents
     count = 0
     cur.execute("SELECT id,s3key FROM jsonurls WHERE mongodb_upload is FALSE AND type=2 AND s3key is not null")
+#    cur.execute("SELECT id,s3key FROM jsonurls WHERE type=2 AND s3key is not null")
     for idx, key in cur.fetchall():
         fname = xfer_from_s3('json/' + key, 'w210')
         if process_plan_into_mongo(fname, mongo.plans, db_conn):

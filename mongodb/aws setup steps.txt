@@ -60,8 +60,8 @@ sudo pip install dateinfer
 # add AWS creds
 mkdir ~/.aws
 echo "[default]
-aws_access_key_id = AKIAJFLYXRCK5GNNIPNQ
-aws_secret_access_key = 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" | tee -a ~/.aws/credentials
+aws_access_key_id = AWS_ACCESS_KEY
+aws_secret_access_key = AWS_KEY_SECRET" | tee -a ~/.aws/credentials
 
 echo "[default]
 output = text
