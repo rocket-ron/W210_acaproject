@@ -95,7 +95,7 @@ some_states = ['SC', 'AZ', 'FL', 'LA', 'MT']
 #               'TN', 'VA', 'SD', 'NH', 'IA',
 #               'TX', 'PA', 'AK']
 
-for state in some_states:
+for state in all_states:
     print "Processing {0}".format(state)
     column = ['issuer',
               'issuerid',
