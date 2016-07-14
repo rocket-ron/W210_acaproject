@@ -1,4 +1,4 @@
-$ sudo yum -y update
+su$ sudo yum -y update
 
 $ echo "[MongoDB]
 name=MongoDB Repository

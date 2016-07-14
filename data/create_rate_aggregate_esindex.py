@@ -167,7 +167,7 @@ for state in all_states:
     metal_level = None
     url = None
 
-    premiums = []
+    premiums = {}
     actions = []
     es_doc = {}
     for row in cur:
@@ -177,36 +177,33 @@ for state in all_states:
         # standardcomponentid looks like the plan_id but with a suffix of -01 or similar.
         if plan_id != row[column.index('standardcomponentid')]:
             # new plan id, start a new aggregation
-            if len(premiums) > 0:
+            if len(premiums.keys()) > 0:
                 # finalize the document
                 es_doc = { 'plan_name': row[column.index('planname')],
-                           'issuer' : row[column.index('issuerName')],
+                           'issuer': row[column.index('issuerName')],
                            'plan_type': row[column.index('plantype')],
                            'level': row[column.index('metallevel')],
                            'url': row[column.index('url')],
-                           'premium' : premiums,
-                           'drugs' : fetch_drugs_for_plan(mongo_client, plan_id),
+                           'state': state,
+                           'premiums': premiums,
+                           'drugs': fetch_drugs_for_plan(mongo_client, plan_id),
                            'providers': fetch_providers_for_plan(mongo_client, plan_id),
                            'conditions': fetch_conditions_for_plan(plan_id)
                            }
                 action = {
-                    "_index": "zplan",
+                    "_index": "plans",
                     "_type": "plan",
+                    "_id": plan_id,
                     "_source": es_doc
                 }
                 actions.append(action)
                 try:
-                    # write the document to elastic search
-                    # es.index(index='myindex', doc_type='plan', id=plan_id, body=es_doc)
-                    helpers.bulk(es, actions)
+                    helpers.bulk(es, actions, chunk_size=1, request_timeout=60)
                 except ConnectionTimeout, ConnectionError:
                     print "ES Connection Timeout on plan {0}".format(plan_id)
-#                    print "Waiting 10 seconds..."
-#                    time.sleep(10)
-#                    es.index(index='myindex', doc_type='plan', id=plan_id, body=es_doc)
 
                 # clear the premiums list and set the current plan_id
-                premiums = []
+                premiums = {}
                 actions = []
                 plan_id = row[column.index('standardcomponentid')]
                 plan_type = row[column.index('plantype')]
@@ -221,13 +218,13 @@ for state in all_states:
         areaId = m.group()
         premium_label = 'age_' + row[column.index('age')] + '_areaID_' + areaId
         if row[column.index('individualtobaccorate')]:
-            premiums.append({premium_label + '_individualtobacco': row[column.index('individualtobaccorate')]})
+            premiums[premium_label + '_individualtobacco'] = row[column.index('individualtobaccorate')]
         if row[column.index('individualrate')]:
-            premiums.append({premium_label + '_individual': row[column.index('individualrate')]})
+            premiums[premium_label + '_individual'] = row[column.index('individualrate')]
 
-        for index in range (column.index('primarysubscriberandonedependent'),
-                            column.index('coupleandthreeormoredependents')):
+        for index in range(column.index('primarysubscriberandonedependent'),
+                           column.index('coupleandthreeormoredependents')):
             if row[index]:
-                premiums.append({premium_label + '_' + column[index]: row[index]})
+                premiums[premium_label + '_' + column[index]] = row[index]
 
 
