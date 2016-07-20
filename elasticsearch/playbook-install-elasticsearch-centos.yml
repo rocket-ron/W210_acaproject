@@ -2,6 +2,11 @@
   gather_facts: yes
   remote_user: root
   become: true
+  vars:
+    java8_download_url: http://download.oracle.com/otn-pub/java/jdk/8u91-b14/jdk-8u91-linux-x64.tar.gz
+    java8_download_folder: /opt
+    java_name: "{{download_folder}}/jdk1.8.0_91"
+    java_archive: "{{download_folder}}/jdk-8u91-linux-x64.tar.gz"
   tasks:
 
     - name: update hosts file
@@ -12,20 +17,38 @@
         state=present
       with_items: groups['all']
 
+    - name: install elasticsearch repository GPG key
+
+
     - name: install elasticsearch repo
+      rpm_key: 
+        state=present 
+        key=https://packages.elastic.co/GPG-KEY-elasticsearch
       copy: src=templates/elasticsearch.repo dest=/etc/yum.repos.d/ owner=root group=root mode=0644
 
     - name: install epel-release
       yum: name=epel-release state=latest
 
-    - name: install openjdk
-      yum: name=java-1.8.0-openjdk-devel state=latest
-
-    - name: copy set java script
-      copy: src=templates/set_java.sh dest=/root/set_java.sh mode=755
-
-    - name: execute set java script
-      command: sh /root/set_java.sh
+    - name: install oracle java8
+      get_url: 
+        url={{java_download_url}}
+        headers="Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie"
+        validate_certs=no
+        dest={{java_archive}}
+      unarchive:
+        src={{java_archive}}
+        dest={{download_folder}}
+        copy=no
+      file: 
+        state=directory 
+        path={{java_name}}
+        owner=root 
+        group=root 
+        recurse=yes
+      command: 'alternatives --install "/usr/bin/java" "java" "{{java_name}}/bin/java" 2000'
+      file:
+        state=absent
+        path={{java_archive}}
 
     - name: install packages
       yum: pkg={{item}} state=latest
@@ -38,17 +61,14 @@
     - name: install elasticsearch
       yum: name=elasticsearch state=latest
 
-    - name: reload systemctl daemon
-      shell: systemctl daemon-reload
-
-    - name: enable elasticsearch service daemon
-      shell: systemctl enable elasticsearch.service
+    - name: add elasticsearch service to chkconfig
+      shell: chkconfig --add elasticsearch
 
     - name: set cluster name
       lineinfile: 'dest=/etc/elasticsearch/elasticsearch.yml
         state=present 
         insertafter="^# cluster.name" 
-        line="cluster.name: hades"'
+        line="cluster.name: w210"'
 
     - name: set cluster node name
       lineinfile: 'dest=/etc/elasticsearch/elasticsearch.yml
@@ -87,10 +107,10 @@
         line="discovery.zen.ping.unicast.hosts: [\"{% for host in groups["all"] %}{{ hostvars[host].host_alias }}\"{%if not loop.last %},\"{% endif %}{% endfor %}]"'
 
     - name: install jettro plugin
-      command: /usr/share/elasticsearch/bin/plugin install jettro/elasticsearch-gui
+      command: /usr/share/elasticsearch/bin/plugin install royrusso/elasticsearch-HQ
         creates=/usr/share/elasticsearch/plugins/gui/package.json
 
-    - name: enable cors for jettro
+    - name: enable cors
       lineinfile: 'dest=/etc/elasticsearch/elasticsearch.yml
         state=present 
         insertafter=EOF

@@ -1,17 +1,22 @@
 #!/bin/bash
-slcli -y vs create --datacenter=sjc03 --hostname=elasticm1 --domain=w251.rlc --billing=hourly --key=rcordell --cpu=2 --memory=4096 --disk=100 --network=1000 --os=CENTOS_LATEST_64
+slcli -y vs create --datacenter=sjc03 --hostname=data03 --domain=w210.rlc --billing=hourly --key=rcordell --cpu=2 --memory=8192 --disk=25 --disk=100 --network=1000 --os=CENTOS_LATEST_64
 sleep 5
-slcli -y vs create --datacenter=sjc03 --hostname=elasticdata1 --domain=w251.rlc --billing=hourly --key=rcordell --cpu=2 --memory=4096 --disk=100 --network=1000 --os=CENTOS_LATEST_64
+slcli -y vs create --datacenter=sjc03 --hostname=data04 --domain=w210.rlc --billing=hourly --key=rcordell --cpu=2 --memory=8192 --disk=25 --disk=100 --network=1000 --os=CENTOS_LATEST_64
 sleep 5
-slcli -y vs create --datacenter=sjc03 --hostname=elasticdata2 --domain=w251.rlc --billing=hourly --key=rcordell --cpu=2 --memory=4096 --disk=100 --network=1000 --os=CENTOS_LATEST_64
+slcli -y vs create --datacenter=sjc03 --hostname=data05 --domain=w210.rlc --billing=hourly --key=rcordell --cpu=2 --memory=8192 --disk=25 --disk=100 --network=1000 --os=CENTOS_LATEST_64
 
 # Wait for softlayer to issue ips to the servers we just created
 sleep 300
 
+# check to see if the machines are ready
+slcli -y vs ready 'data03' --wait=300
+slcli -y vs ready 'data04' --wait=300
+slcli -y vs ready 'data05' --wait=300
+
 # Grab the ip addresses
-masterip=`slcli vs list | grep elasticm1 | awk '{print $3}'`
-datanode1ip=`slcli vs list | grep elasticdata1 | awk '{print $3}'`
-datanode2ip=`slcli vs list | grep elasticdata2 | awk '{print $3}'`
+masterip=`slcli vs list | grep data03 | awk '{print $3}'`
+datanode1ip=`slcli vs list | grep data04 | awk '{print $3}'`
+datanode2ip=`slcli vs list | grep data05 | awk '{print $3}'`
 
 DATANODES=($datanode1ip $datanode2ip)
 ALLNODES=($masterip ${DATANODES[@]})
