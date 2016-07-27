@@ -61,6 +61,19 @@
                     }
                 }
             }
+
+            "conditions": {
+                "properties" : {
+                    "condition" : {
+                        "type": "string",
+                        "index": "analyzed",
+                        "raw" : {
+                            "type": "string",
+                            "index": "not_analyzed"
+                        }
+                    }
+                }
+            }
         }
     }
 }

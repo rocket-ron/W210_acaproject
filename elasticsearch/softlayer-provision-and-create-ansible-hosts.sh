@@ -1,12 +1,12 @@
 #!/bin/bash
-slcli -y vs create --datacenter=sjc03 --hostname=data03 --domain=w210.rlc --billing=hourly --key=rcordell --cpu=2 --memory=8192 --disk=25 --disk=100 --network=1000 --os=CENTOS_LATEST_64
+slcli -y vs create --datacenter=sjc03 --hostname=data03 --domain=w210.rlc --billing=hourly --key=rcordell --cpu=4 --memory=8192 --disk=25 --disk=100 --network=1000 --os=CENTOS_LATEST_64
 sleep 5
-slcli -y vs create --datacenter=sjc03 --hostname=data04 --domain=w210.rlc --billing=hourly --key=rcordell --cpu=2 --memory=8192 --disk=25 --disk=100 --network=1000 --os=CENTOS_LATEST_64
+slcli -y vs create --datacenter=sjc03 --hostname=data04 --domain=w210.rlc --billing=hourly --key=rcordell --cpu=4 --memory=8192 --disk=25 --disk=100 --network=1000 --os=CENTOS_LATEST_64
 sleep 5
-slcli -y vs create --datacenter=sjc03 --hostname=data05 --domain=w210.rlc --billing=hourly --key=rcordell --cpu=2 --memory=8192 --disk=25 --disk=100 --network=1000 --os=CENTOS_LATEST_64
+slcli -y vs create --datacenter=sjc03 --hostname=data05 --domain=w210.rlc --billing=hourly --key=rcordell --cpu=4 --memory=8192 --disk=25 --disk=100 --network=1000 --os=CENTOS_LATEST_64
 
 # Wait for softlayer to issue ips to the servers we just created
-sleep 300
+# sleep 300
 
 # check to see if the machines are ready
 slcli -y vs ready 'data03' --wait=300

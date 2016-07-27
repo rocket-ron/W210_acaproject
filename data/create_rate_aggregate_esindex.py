@@ -6,7 +6,7 @@ from pymongo.errors import ConnectionFailure
 import psycopg2
 import re
 import argparse
-import time
+import csv
 
 
 arg_parser = argparse.ArgumentParser(description='Process aggregate plan data into elastic search')
@@ -66,6 +66,15 @@ def fetch_providers_for_plan(client, plan_id):
 # TODO: implement
 def fetch_conditions_for_plan(plan_id):
     pass
+
+
+def load_aggregated_premiums():
+    d = {}
+    with open('premiums_aggregated.csv', 'r') as f:
+        d = csv.DictReader(f)
+
+    return d
+
 
 
 db_conn = connect_db(args.postgreshost)

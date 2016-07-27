@@ -4,3 +4,6 @@
 [submodule "HHS-SemanticSearch"]
 	path = HHS-SemanticSearch
 	url = https://github.com/bayeshack2016/HHS-SemanticSearch.git
+[submodule "konniam"]
+	path = konniam
+	url = https://github.com/KonniamChan/aca-webdev.git

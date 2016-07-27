@@ -42,11 +42,11 @@
         },
         "url": {
           "type": "string",
-          "index": "not_analyzed"
+          "index": "no"
         },
         "logo_url": {
           "type": "string",
-          "index": "not_analyzed"
+          "index": "no"
         },
         "state": {
           "type": "string",
@@ -68,10 +68,12 @@
           "type": "float"
         },
         "premiums_q1": {
-          "type": "float"
+          "type": "float",
+          "index": "no"
         },
         "premiums_q3": {
-          "type": "float"
+          "type": "float",
+          "index": "no"
         },
         "drugs": {
           "type": "string",
@@ -95,46 +97,9 @@
         "providers": {
           "type": "nested",
           "properties": {
-            "addresses": {
-              "type": "nested",
-              "properties": {
-                "address": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                },
-                "address_2": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                },
-                "city": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                },
-                "phone": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                },
-                "state": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                },
-                "zip": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                }
-              }
-            },
             "provider_name": {
               "type": "string",
               "analyzer": "simpleAnalyzer"
-            },
-            "npi": {
-              "type": "string",
-              "index": "not_analyzed"
-            },
-            "speciality": {
-              "type": "string",
-              "index": "not_analyzed"
             }
           }
         },
