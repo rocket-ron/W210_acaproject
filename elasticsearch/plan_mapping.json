@@ -1,7 +1,7 @@
-{
-  "settings": {
-    "number_of_shards": 6,
-    "number_of_replicas": 1,
+{"settings": {
+    "number_of_shards": 4,
+    "number_of_replicas": 0,
+    "refresh_interval": "-1",
     "index": {
       "analysis": {
         "analyzer": {
@@ -42,11 +42,11 @@
         },
         "url": {
           "type": "string",
-          "index": "not_analyzed"
+          "index": "no"
         },
         "logo_url": {
           "type": "string",
-          "index": "not_analyzed"
+          "index": "no"
         },
         "state": {
           "type": "string",
@@ -68,20 +68,16 @@
           "type": "float"
         },
         "premiums_q1": {
-          "type": "float"
+          "type": "float",
+          "index": "no"
         },
         "premiums_q3": {
-          "type": "float"
+          "type": "float",
+          "index": "no"
         },
         "drugs": {
           "type": "string",
-          "analyzer": "simpleAnalyzer",
-          "fields": {
-            "raw": {
-              "type": "string",
-              "index": "not_analyzed"
-            }
-          }
+          "analyzer": "simpleAnalyzer"
         },
         "conditions": {
           "type": "string",
@@ -95,50 +91,48 @@
         "providers": {
           "type": "nested",
           "properties": {
-            "addresses": {
-              "type": "nested",
-              "properties": {
-                "address": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                },
-                "address_2": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                },
-                "city": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                },
-                "phone": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                },
-                "state": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                },
-                "zip": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                }
-              }
-            },
             "provider_name": {
+              "type": "string",
+              "analyzer": "simpleAnalyzer"
+            },
+            "specialities": {
               "type": "string",
               "analyzer": "simpleAnalyzer"
             },
             "npi": {
               "type": "string",
-              "index": "not_analyzed"
-            },
-            "speciality": {
-              "type": "string",
-              "index": "not_analyzed"
+              "index": "no"
             }
           }
         },
-        "plan_ranks": {
+        "plan_rank_0": {
+          "type": "float"
+        },
+        "plan_rank_1": {
+          "type": "float"
+        },
+        "plan_rank_2": {
+          "type": "float"
+        },
+        "plan_rank_3": {
+          "type": "float"
+        },
+        "plan_rank_4": {
+          "type": "float"
+        },
+        "plan_rank_5": {
+          "type": "float"
+        },
+        "plan_rank_6": {
+          "type": "float"
+        },
+        "plan_rank_7": {
+          "type": "float"
+        },
+        "plan_rank_8": {
+          "type": "float"
+        },
+        "plan_rank_9": {
           "type": "float"
         }
       }

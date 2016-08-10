@@ -9,6 +9,17 @@ import argparse
 import csv
 
 
+"""
+
+    This is the original elasticsearch plans index creation code. All attributes of insurance plans
+    are loaded into the plan document for each plan in the plan_attributes table, and all attributes
+    for providers are loaded in to the provider sub-document.
+
+    This index proved to be too inefficient because it had too many nested objects and performance
+    was poor.
+
+"""
+
 arg_parser = argparse.ArgumentParser(description='Process aggregate plan data into elastic search')
 arg_parser.add_argument('--mongo', dest='mongohost', default='127.0.0.1')
 arg_parser.add_argument('--pghost', dest='postgreshost', default='w210.cxihwctrc5di.us-west-1.rds.amazonaws.com')
@@ -39,7 +50,7 @@ def connect_mongodb(host):
 #  query mongodb formulary db for all the drugs in the drug collection under this plan id.
 def fetch_drugs_for_plan(client, plan_id):
     db = client.formularies
-    cursor = db.drugs.find({"plans.plan_id": plan_id },{"_id":0, "drug_name" : 1, "rxnorm_id" : 1})
+    cursor = db.drugs.find({"plans.plan_id": plan_id}, {"_id": 0, "drug_name": 1, "rxnorm_id": 1})
     drugs = []
     for drug in cursor:
         drugs.append(drug)

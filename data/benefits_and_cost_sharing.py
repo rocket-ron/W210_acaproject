@@ -3,6 +3,14 @@ import csv
 import psycopg2
 
 
+"""
+    This code takes the benefits-and-cost-sharing PUF file and inserts each row from the CSV into
+    the benefits and cost sharing table in PostgreSQL. This data is joined with other tables when
+    creating the elasticsearch index.
+
+"""
+
+
 # get a connection to the database
 def connect_db():
     conn = psycopg2.connect(user="acaproject",

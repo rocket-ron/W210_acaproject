@@ -1,6 +1,17 @@
 import psycopg2
 import csv
 
+
+"""
+
+    This code takes a CSV file that contains URLs to health insurance company logos and
+    updates the logos table in PostgreSQL with the information.
+
+    The logos table is joined with other tables when the plans index is created.
+
+"""
+
+
 # get a connection to the database
 def connect_db(host):
     conn = psycopg2.connect(user="acaproject",
@@ -9,6 +20,7 @@ def connect_db(host):
                             host=host,
                             port="5432")
     return conn
+
 
 def load_issuers_logos_csv():
     db_conn = connect_db('w210.cxihwctrc5di.us-west-1.rds.amazonaws.com')
@@ -42,6 +54,7 @@ def load_issuers_logos_csv():
     db_conn.commit()
     cur.close()
     db_conn.close()
+
 
 if __name__ == '__main__':
     load_issuers_logos_csv()
